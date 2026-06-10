@@ -11,7 +11,7 @@ Instead of rejecting those outright, the tool reads what it can and reports its
 confidence, so an imperfect photo degrades gracefully into "please verify" rather
 than a false pass/fail.
 
-> **Live demo:** _<add your Vercel URL here>_
+> **Live demo:** https://ttb-label-verifier-six.vercel.app
 
 ---
 
