@@ -98,11 +98,20 @@ lib/
   extract.ts               Claude vision call + structured output
   mock.ts                  keyless deterministic fallback
   api.ts                   shared response types
+  batch.ts                 concurrency pool + CSV export (pure, tested)
+  eval.ts                  accuracy scoring + aggregation (pure, tested)
 components/
   VerifyApp.tsx            upload, drag/drop, match-mode form
   ResultPanel.tsx          per-requirement result cards + confidence badges
+components/
+  BatchPanel.tsx           multi-file batch view + results table + CSV export
+eval/
+  fixtures.ts              ground-truth labels for the accuracy eval
+  accuracy.eval.ts         real-model eval runner with accuracy thresholds
 test/
-  compliance.test.ts       14 unit tests for the rules engine
+  compliance.test.ts       unit tests for the rules engine
+  batch.test.ts            unit tests for the concurrency pool + CSV
+  eval.test.ts             unit tests for the eval scorer
 scripts/
   make-samples.mjs         generates sample-labels/
 sample-labels/             ready-to-test images (compliant, missing/altered
@@ -127,10 +136,50 @@ npm run dev                     # http://localhost:3000
 Other commands:
 
 ```bash
-npm test                        # run the compliance unit tests
+npm test                        # run the compliance unit tests (offline)
+npm run eval                    # run the accuracy eval against real Claude vision (needs key)
 npm run build                   # production build
 node scripts/make-samples.mjs   # regenerate sample labels
 ```
+
+---
+
+## Evaluation (accuracy)
+
+Calling a vision model is easy; knowing whether it's *right* is the hard part.
+There's an eval harness ([`eval/`](eval/), [`lib/eval.ts`](lib/eval.ts)) that runs
+the **real model** over a ground-truth fixture set and scores it against expected
+extraction + compliance verdicts — so accuracy is measured, not assumed, and prompt
+or model changes can be regression-tested.
+
+```bash
+npm run eval
+```
+
+The scoring logic is pure and unit-tested ([`test/eval.test.ts`](test/eval.test.ts));
+field values match by normalized similarity, so casing/punctuation differences don't
+count as errors. The suite also asserts accuracy thresholds, so it doubles as a
+regression gate (e.g. it fails if any altered/missing Government Warning slips through).
+
+**Current results** (5-case fixture set, against `claude-opus-4-8`):
+
+| Metric | Result |
+|---|---|
+| Compliance-verdict accuracy | 100% (5/5) |
+| Beverage-type accuracy | 100% |
+| Required-field presence accuracy | 100% |
+| Field-value accuracy | 100% |
+| Government-warning detection (missing/altered) | 100% |
+
+Notably, the **glare + angle + low-light** photo scored a correct, fully-compliant
+verdict — the bonus case, verified end to end.
+
+> **Honest caveat:** the fixture labels are programmatically generated (clean
+> renders + one synthetically degraded photo), not a broad sample of real-world
+> photographs. 100% here means "the pipeline is correct on representative cases,"
+> not "the model never errs." The value is the *harness*: drop in real labeled
+> photos and the same `npm run eval` quantifies real-world accuracy and guards
+> against regressions.
 
 ---
 
