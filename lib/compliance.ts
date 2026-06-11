@@ -46,6 +46,16 @@ export interface ComplianceReport {
   summary: string;
 }
 
+export type Verdict = "compliant" | "review" | "noncompliant" | "unreadable";
+
+/** Single source of truth for the headline verdict, shared by the single and batch views. */
+export function deriveVerdict(report: ComplianceReport): Verdict {
+  if (!report.imageQuality.readable) return "unreadable";
+  if (report.compliant) return "compliant";
+  if (report.hasUncertainty && report.checks.every((c) => c.status !== "fail")) return "review";
+  return "noncompliant";
+}
+
 /** Lowercase, collapse whitespace, strip punctuation that doesn't change meaning. */
 export function normalize(text: string): string {
   return text

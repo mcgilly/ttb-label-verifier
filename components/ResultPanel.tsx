@@ -1,5 +1,13 @@
 import type { VerifyResponse } from "@/lib/api";
-import type { CheckStatus, RequirementCheck, MatchCheck } from "@/lib/compliance";
+import { deriveVerdict, type CheckStatus, type RequirementCheck, type MatchCheck } from "@/lib/compliance";
+
+/** Verdict badge text + colour, shared by the single view and the batch table. */
+export const VERDICT_BADGE: Record<ReturnType<typeof deriveVerdict>, { text: string; tone: string }> = {
+  compliant: { text: "Compliant", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" },
+  review: { text: "Needs review", tone: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
+  noncompliant: { text: "Not compliant", tone: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" },
+  unreadable: { text: "Image not readable", tone: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
+};
 
 const STATUS_STYLES: Record<CheckStatus, { dot: string; label: string; ring: string }> = {
   pass: { dot: "bg-emerald-500", label: "Pass", ring: "border-emerald-200 dark:border-emerald-900" },
@@ -54,13 +62,7 @@ function MatchRow({ m }: { m: MatchCheck }) {
 
 export function ResultPanel({ data }: { data: VerifyResponse }) {
   const { report, mock } = data;
-  const verdict = !report.imageQuality.readable
-    ? { text: "Image not readable", tone: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" }
-    : report.compliant
-      ? { text: "Compliant", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" }
-      : report.hasUncertainty && report.checks.every((c) => c.status !== "fail")
-        ? { text: "Needs review", tone: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" }
-        : { text: "Not compliant", tone: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" };
+  const verdict = VERDICT_BADGE[deriveVerdict(report)];
 
   return (
     <div className="flex flex-col gap-4">
