@@ -48,6 +48,14 @@ export interface ComplianceReport {
 
 export type Verdict = "compliant" | "review" | "noncompliant" | "unreadable";
 
+/** Human-readable verdict labels, shared by the UI badges and the CSV export. */
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  compliant: "Compliant",
+  review: "Needs review",
+  noncompliant: "Not compliant",
+  unreadable: "Image not readable",
+};
+
 /** Single source of truth for the headline verdict, shared by the single and batch views. */
 export function deriveVerdict(report: ComplianceReport): Verdict {
   if (!report.imageQuality.readable) return "unreadable";

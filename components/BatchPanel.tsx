@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { deriveVerdict } from "@/lib/compliance";
 import {
+  batchToCsv,
   DEFAULT_CONCURRENCY,
   MAX_BATCH,
   runPool,
@@ -91,6 +92,16 @@ export function BatchPanel() {
     setRunning(false);
   }
 
+  function downloadCsv() {
+    const blob = new Blob([batchToCsv(items)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ttb-batch-results.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const done = items.filter((i) => i.status === "done" && i.result);
   const counts = done.reduce(
     (acc, i) => {
@@ -160,6 +171,13 @@ export function BatchPanel() {
               className="rounded-xl bg-amber-600 px-4 py-2.5 font-medium text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {running ? "Analyzing…" : `Verify ${items.length} label${items.length === 1 ? "" : "s"}`}
+            </button>
+            <button
+              onClick={downloadCsv}
+              disabled={running || done.length === 0}
+              className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            >
+              Download CSV
             </button>
             <button
               onClick={() => dispatch({ type: "clear" })}

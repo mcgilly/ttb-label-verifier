@@ -1,4 +1,5 @@
 import type { VerifyResponse } from "./api";
+import { deriveVerdict, VERDICT_LABEL } from "./compliance";
 
 /**
  * Batch processing runs entirely client-side: the browser fires one request per
@@ -35,6 +36,51 @@ export async function verifyOne(file: File, signal?: AbortSignal): Promise<Verif
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status}).`);
   return data as VerifyResponse;
+}
+
+/** RFC-4180 cell escaping: quote when the value contains a comma, quote, or newline. */
+function csvCell(value: string | number | boolean): string {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+const CSV_COLUMNS = [
+  "filename",
+  "status",
+  "beverage_type",
+  "is_import",
+  "verdict",
+  "failed_elements",
+  "review_elements",
+  "summary",
+  "error",
+] as const;
+
+/**
+ * Serialize a batch to CSV — one row per label, covering done and errored items
+ * alike so the export is a complete record of the run. Pure & unit-tested.
+ */
+export function batchToCsv(items: BatchItem[]): string {
+  const rows = items.map((item) => {
+    const report = item.result?.report;
+    if (!report) {
+      return [item.file.name, item.status, "", "", "", "", "", "", item.error ?? ""];
+    }
+    const failed = report.checks.filter((c) => c.status === "fail").map((c) => c.label);
+    const review = report.checks.filter((c) => c.status === "uncertain").map((c) => c.label);
+    return [
+      item.file.name,
+      item.status,
+      report.beverageType,
+      report.isImport ? "yes" : "no",
+      VERDICT_LABEL[deriveVerdict(report)],
+      failed.join("; "),
+      review.join("; "),
+      report.summary,
+      "",
+    ];
+  });
+  return [CSV_COLUMNS, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 
 /**

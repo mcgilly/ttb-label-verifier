@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runPool } from "../lib/batch";
+import { batchToCsv, runPool, type BatchItem } from "../lib/batch";
 import { deriveVerdict } from "../lib/compliance";
 import type { ComplianceReport } from "../lib/compliance";
 
@@ -82,5 +82,52 @@ describe("deriveVerdict", () => {
       ],
     });
     expect(deriveVerdict(r)).toBe("noncompliant");
+  });
+});
+
+describe("batchToCsv", () => {
+  function item(name: string, partial: Partial<BatchItem>): BatchItem {
+    return { id: name, file: { name } as File, previewUrl: "", status: "done", ...partial };
+  }
+
+  it("emits a header plus one row per item, including errored rows", () => {
+    const items: BatchItem[] = [
+      item("a.png", {
+        result: {
+          mock: false,
+          extraction: {} as never,
+          report: report({
+            compliant: false,
+            checks: [
+              { key: "netContents", label: "Net Contents", description: "", status: "fail", value: null, confidence: 0.9, reason: "" },
+            ],
+            summary: "1 required element failed.",
+          }),
+        },
+      }),
+      item("b.png", { status: "error", error: "Rate limited", result: undefined }),
+    ];
+    const csv = batchToCsv(items);
+    const lines = csv.split("\r\n");
+    expect(lines).toHaveLength(3); // header + 2 rows
+    expect(lines[0]).toMatch(/^filename,status,beverage_type/);
+    expect(lines[1]).toContain("Not compliant");
+    expect(lines[1]).toContain("Net Contents");
+    expect(lines[2]).toContain("Rate limited");
+  });
+
+  it("escapes commas and quotes per RFC 4180", () => {
+    const items: BatchItem[] = [
+      item('we, the "best".png', {
+        result: {
+          mock: false,
+          extraction: {} as never,
+          report: report({ compliant: true, summary: "All good, really." }),
+        },
+      }),
+    ];
+    const row = batchToCsv(items).split("\r\n")[1];
+    expect(row).toContain('"we, the ""best"".png"');
+    expect(row).toContain('"All good, really."');
   });
 });
