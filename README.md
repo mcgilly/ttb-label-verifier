@@ -15,6 +15,18 @@ than a false pass/fail.
 
 ---
 
+## Screenshots
+
+**Single label** — per-requirement pass / fail / review with the model's read confidence:
+
+![Single-label verification](docs/screenshots/single.png)
+
+**Batch** — verify many labels at once with a summary and CSV export:
+
+![Batch verification](docs/screenshots/batch.png)
+
+---
+
 ## What it checks
 
 For the label's beverage type (beer / wine / spirits), it verifies the common
