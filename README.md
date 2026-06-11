@@ -183,6 +183,64 @@ verdict — the bonus case, verified end to end.
 
 ---
 
+## API (integration surface)
+
+The web UI is a thin client over a single JSON endpoint — the same surface a
+**COLA / COLAs Online review workflow** would call: POST a label, get back a
+structured compliance verdict to attach to the application record. It accepts
+both a browser upload and a system-to-system JSON call.
+
+**System-to-system (base64 JSON):**
+
+```bash
+curl -X POST https://ttb-label-verifier-six.vercel.app/api/verify \
+  -H "Content-Type: application/json" \
+  -d "{\"imageBase64\":\"$(base64 -i label.png)\",\"mediaType\":\"image/png\"}"
+```
+
+**Browser / form upload (multipart):**
+
+```bash
+curl -X POST https://ttb-label-verifier-six.vercel.app/api/verify \
+  -F "image=@label.png"
+```
+
+Optionally include `expected` (an object of `brandName` / `classType` /
+`alcoholContent` / `netContents`) to also run the COLA application-match check.
+
+**Response** (`200`):
+
+```jsonc
+{
+  "report": {
+    "beverageType": "spirits",
+    "isImport": false,
+    "compliant": true,
+    "hasUncertainty": false,
+    "imageQuality": { "readable": true, "issues": [], "note": "..." },
+    "checks": [
+      { "key": "brandName", "label": "Brand Name", "status": "pass",
+        "value": "Old Tom Distillery", "confidence": 0.99, "reason": "..." }
+      // ...one per required TTB element
+    ],
+    "summary": "All required TTB label elements are present and appear compliant."
+  },
+  "extraction": { /* raw structured read of every field + per-field confidence */ },
+  "mock": false
+}
+```
+
+Errors return `{ "error": "..." }` with a meaningful status (`400` bad input,
+`413` too large, `415` unsupported type, `429` rate limited, `5xx` upstream).
+
+**Production path** (not built — this is a prototype): API-key auth per consumer,
+per-key rate limiting, and an async webhook callback for large batches so callers
+don't hold a connection open. The synchronous endpoint above is the right shape
+for interactive review; bulk ingestion would move to the Anthropic Batches API
+behind a job queue.
+
+---
+
 ## Deploy (Vercel)
 
 1. Push this repo to GitHub.
