@@ -267,6 +267,22 @@ behind a job queue.
   a substitute for a TTB specialist's sign-off.
 - **No persistence.** Images are processed in-memory per request and not stored.
 
+## Security review
+
+A self-review of the attack surface (not a substitute for a professional audit):
+
+| Area | Finding / status |
+|---|---|
+| **Secrets** | `ANTHROPIC_API_KEY` is server-only (used in the route + `lib/extract`), never in the client bundle or logs; `.env.local` is git-ignored. ✓ |
+| **Input validation** | Uploads are size-capped (4 MB), type-allowlisted (JPEG/PNG/WebP/GIF), and `expected` data is Zod-validated; bad input returns typed `4xx`. ✓ |
+| **XSS** | All model- and user-derived text renders through React (auto-escaped); no `dangerouslySetInnerHTML`. ✓ |
+| **CSV / formula injection** | **Fixed** — the CSV export neutralizes cells beginning with `= + - @` (filenames and extracted label text are attacker-influenceable). |
+| **SSRF** | The endpoint accepts uploaded bytes / base64 only — no server-side URL fetching. ✓ |
+| **Prototype pollution** | Request bodies are read into typed, Zod-validated shapes; no unsafe object merges. ✓ |
+| **Dependencies** | One transitive **moderate** advisory (`postcss` CSS-stringify XSS) via Next's bundled build toolchain — a build-time path that never processes untrusted CSS; `npm audit fix --force` would downgrade Next, so it's accepted and tracked. |
+
+**Accepted risk for this prototype:** the `/api/verify` endpoint is **unauthenticated and unthrottled**, so a public deployment can incur Anthropic API cost under abuse (financial DoS). Partially mitigated by the size/type caps; the real fix is API-key auth + per-key rate limiting (see the API section). The demo key is usage-limited and rotatable.
+
 ## If this were going to production
 
 - Cache the system prompt (prompt caching) to cut cost/latency on volume.

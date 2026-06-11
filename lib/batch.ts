@@ -38,9 +38,17 @@ export async function verifyOne(file: File, signal?: AbortSignal): Promise<Verif
   return data as VerifyResponse;
 }
 
-/** RFC-4180 cell escaping: quote when the value contains a comma, quote, or newline. */
+/**
+ * CSV cell encoding with two protections:
+ *  - RFC-4180 quoting when the value contains a comma, quote, or newline.
+ *  - CSV-injection (formula injection) defense: a cell that begins with =, +, -,
+ *    @, tab, or CR can execute as a formula in Excel/Sheets. Since filenames and
+ *    model-extracted label text are attacker-influenceable, we neutralize those
+ *    by prefixing a single quote so the spreadsheet treats them as text.
+ */
 function csvCell(value: string | number | boolean): string {
-  const s = String(value ?? "");
+  let s = String(value ?? "");
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

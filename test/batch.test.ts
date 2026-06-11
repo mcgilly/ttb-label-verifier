@@ -116,6 +116,23 @@ describe("batchToCsv", () => {
     expect(lines[2]).toContain("Rate limited");
   });
 
+  it("neutralizes spreadsheet formula injection in attacker-influenced cells", () => {
+    const items: BatchItem[] = [
+      item("=HYPERLINK(\"http://evil\")", {
+        result: {
+          mock: false,
+          extraction: {} as never,
+          report: report({ compliant: true, summary: "+1+1 looks like a formula" }),
+        },
+      }),
+    ];
+    const row = batchToCsv(items).split("\r\n")[1];
+    // Leading '=' filename is quoted (contains a quote char) AND prefixed with '
+    expect(row).toContain("'=HYPERLINK");
+    // Leading '+' summary is prefixed with ' so a spreadsheet treats it as text
+    expect(row).toContain("'+1+1 looks like a formula");
+  });
+
   it("escapes commas and quotes per RFC 4180", () => {
     const items: BatchItem[] = [
       item('we, the "best".png', {

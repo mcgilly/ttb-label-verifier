@@ -14,7 +14,10 @@ import { mockExtraction } from "@/lib/mock";
 export const runtime = "nodejs";
 export const maxDuration = 60; // vision + thinking can take a few seconds
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+// Kept under Vercel's ~4.5 MB serverless request-body cap so oversized uploads
+// get our clear 413 rather than an opaque platform rejection. Production would
+// downscale client-side before upload to lift this constraint.
+const MAX_BYTES = 4 * 1024 * 1024; // 4 MB
 
 /**
  * Label verification endpoint. This is the integration surface — a COLA-style
